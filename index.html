@@ -499,37 +499,31 @@
   .game-item{
     position:absolute;
     top:0; left:0;
-    width:46px; height:46px;
+    width:52px; height:64px;
     display:flex;
+    flex-direction:column;
     align-items:center;
     justify-content:center;
-    font-size:28px;
-    border-radius:50%;
+    gap:2px;
+    padding:4px 2px 5px;
+    font-size:24px;
+    border-radius:12px;
     background:var(--f-surface);
     border:1.5px solid var(--f-rule);
     cursor:pointer;
     will-change:transform;
     box-shadow:0 1px 0 rgba(0,0,0,0.03);
   }
-  .game-item.is-recyclable{ border-color:rgba(85,117,92,0.45); }
-  .game-item.is-trash{ border-color:rgba(160,86,74,0.4); }
-  .item-badge{
-    position:absolute;
-    right:-5px; bottom:-5px;
-    width:18px; height:18px;
-    border-radius:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:11px;
-    line-height:1;
-    font-family:var(--font-sans);
-    color:#fff;
-    border:1.5px solid var(--f-surface);
-    box-shadow:0 1px 2px rgba(0,0,0,0.18);
+  .item-label{
+    font-family:var(--font-mono);
+    font-size:7.5px;
+    line-height:1.15;
+    letter-spacing:0.01em;
+    color:var(--f-ink-55);
+    text-align:center;
+    max-width:48px;
+    overflow-wrap:break-word;
   }
-  .game-item.is-recyclable .item-badge{ background:var(--f-moss); }
-  .game-item.is-trash .item-badge{ background:var(--f-clay); }
   .game-item.pop-good{ animation:pop-good .26s ease-out forwards; }
   .game-item.pop-bad{ animation:pop-bad .26s ease-out forwards; }
   @keyframes pop-good{
@@ -644,6 +638,29 @@
   }
   .game-legend span{ display:flex; align-items:center; gap:5px; }
 
+  .game-fact{
+    min-height:1.4em;
+    margin-top:10px;
+    padding:8px 14px;
+    border:var(--hair);
+    border-top:none;
+    background:var(--f-surface);
+    font-family:var(--font-mono);
+    font-size:0.78rem;
+    line-height:1.4;
+    color:var(--f-ink-80);
+    transition:color .2s ease;
+  }
+  .game-fact.is-bad{ color:var(--f-clay); }
+  .game-fact.is-good{ color:var(--f-moss); }
+  .game-wrap.eightbit .game-fact{
+    background:var(--eb-panel);
+    border-color:var(--eb-grid);
+    color:var(--eb-ink-2);
+  }
+  .game-wrap.eightbit .game-fact.is-bad{ color:var(--eb-bad); }
+  .game-wrap.eightbit .game-fact.is-good{ color:var(--eb-good); }
+
   /* ============ 8-bit theme (scoped entirely to .game-wrap.eightbit) ============ */
   .game-wrap.eightbit{
     --eb-bg:     #10182b;
@@ -687,21 +704,16 @@
   .game-wrap.eightbit .game-item{
     border-radius:0;
     border-width:3px;
+    border-color:var(--eb-ink-2);
     background:var(--eb-panel);
     box-shadow:3px 3px 0 rgba(0,0,0,0.6);
     filter:contrast(1.15) saturate(1.4);
   }
-  .game-wrap.eightbit .game-item.is-recyclable{ border-color:var(--eb-good); }
-  .game-wrap.eightbit .game-item.is-trash{ border-color:var(--eb-bad); }
-  .game-wrap.eightbit .item-badge{
-    border-radius:0;
-    border-width:2px;
-    border-color:#000;
+  .game-wrap.eightbit .item-label{
     font-family:var(--font-pixel);
-    font-size:8px;
+    font-size:6px;
+    color:var(--eb-ink-2);
   }
-  .game-wrap.eightbit .game-item.is-recyclable .item-badge{ background:var(--eb-good); color:#04240f; }
-  .game-wrap.eightbit .game-item.is-trash .item-badge{ background:var(--eb-bad); color:#2a0010; }
 
   .game-wrap.eightbit .float-text{
     font-family:var(--font-pixel);
@@ -785,7 +797,7 @@
 
     <div class="game-intro">
       <h2 class="game-title">Sort the bin</h2>
-      <p class="game-tagline">Tap the recyclables before they hit the curb. Leave the trash falling. It speeds up the longer you survive.</p>
+      <p class="game-tagline">Tap only what Grand Rapids actually takes curbside &mdash; read each item, there's no badge to give it away. Rules come straight from the city's <a href="https://www.grandrapidsmi.gov/departments/public-works/waste-services/single-stream-recycling-program/" target="_blank" rel="noopener">single-stream recycling guidelines</a>.</p>
     </div>
 
     <div class="game-hud">
@@ -808,17 +820,18 @@
 
     <div class="game-stage" id="game-stage">
       <div class="game-overlay" id="game-overlay">
-        <span class="label">Reflex sort</span>
-        <h3>Can you keep up with the truck?</h3>
-        <p>Tap anything with a green &#9851; badge. Leave anything with a red &#10007; badge alone &mdash; letting trash fall past is correct, not a mistake. Missed recyclables cost a life too, so don't wait too long.</p>
-        <p class="combo-hint">Clear an entire wave with zero misses for a bonus life.</p>
+        <span class="label">Know your bin</span>
+        <h3>What actually belongs in the cart?</h3>
+        <p>Tap only the items Grand Rapids accepts in single-stream recycling. Leave everything else falling &mdash; that's correct, not a mistake. Missed recyclables cost a life too, so don't wait too long.</p>
+        <p class="combo-hint">Clear an entire wave with zero misses for a bonus life. Every tap teaches you why.</p>
         <div class="game-legend">
-          <span>&#9851; green badge = tap it</span>
-          <span>&#10007; red badge = let it fall</span>
+          <span>Recyclable &rarr; tap it</span>
+          <span>Not accepted &rarr; let it fall</span>
         </div>
         <button class="primary" id="game-start-btn" type="button">Start game</button>
       </div>
     </div>
+    <div class="game-fact" id="game-fact">Tap items the way you would at the curb &mdash; only real single-stream recyclables belong in the cart.</div>
   </section>
 
 </div>
@@ -1148,30 +1161,45 @@
   var pixelBtn = document.getElementById("game-pixel-toggle");
   var gameWrap = document.getElementById("game-wrap");
   var startBtn = document.getElementById("game-start-btn");
+  var factEl   = document.getElementById("game-fact");
 
   // ---------- item catalogue ----------
-  // Picked (and re-picked) so each icon reads unambiguously as its category at a glance
-  // and at small size — nothing paper/cardboard-shaped ends up on the trash side.
+  // Straight from the City of Grand Rapids single-stream recycling guidelines:
+  // https://www.grandrapidsmi.gov/departments/public-works/waste-services/single-stream-recycling-program/
+  // No badge tells you the answer — the label and the "note" (shown after every tap) do the teaching.
   var RECYCLABLES = [
-    { emoji: "\uD83E\uDD6B", label: "tin can" },           // 🥫
-    { emoji: "\uD83D\uDCE6", label: "cardboard box" },     // 📦
-    { emoji: "\uD83C\uDF7E", label: "glass bottle" },      // 🍾
-    { emoji: "\uD83D\uDCF0", label: "newspaper" },         // 📰
-    { emoji: "\uD83E\uDDF4", label: "plastic bottle" },    // 🧴
-    { emoji: "\uD83E\uDDC3", label: "juice carton" }       // 🧃
+    { emoji: "\uD83E\uDD6B", label: "aluminum can", note: "Metal: beverage cans are always recyclable \u2014 give it a rinse first." },              // 🥫
+    { emoji: "\uD83E\uDDF4", label: "empty aerosol can", note: "Metal: aerosol cans count once they're completely empty." },                        // 🧴
+    { emoji: "\uD83C\uDF7E", label: "glass bottle", note: "Glass: beverage bottles are recyclable \u2014 remove the cap." },                        // 🍾
+    { emoji: "\uD83E\uDED9", label: "glass food jar", note: "Glass: clear and colored food containers are recyclable \u2014 rinse it out." },        // 🫙
+    { emoji: "\uD83E\uDD5B", label: "milk jug", note: "Plastic: milk jugs are recyclable \u2014 cap back on." },                                     // 🥛
+    { emoji: "\uD83E\uDDFC", label: "shampoo bottle", note: "Plastic #1\u20137: shampoo & soap bottles are recyclable." },                           // 🧼
+    { emoji: "\uD83E\uDD63", label: "yogurt cup", note: "Plastic #1\u20137: yogurt cups are recyclable \u2014 rinse it out." },                      // 🥣
+    { emoji: "\uD83E\uDEB4", label: "plastic flower pot", note: "Plastic: plant flats and flower pots are recyclable too." },                        // 🪴
+    { emoji: "\uD83D\uDCE6", label: "flattened cardboard box", note: "Paper: break boxes down to about 2\u2032 x 2\u2032 before recycling." },       // 📦
+    { emoji: "\uD83D\uDCF0", label: "newspaper", note: "Paper: newspaper and mixed paper are recyclable." }                                          // 📰
   ];
   var TRASH = [
-    { emoji: "\uD83C\uDF55", label: "greasy pizza slice" }, // 🍕
-    { emoji: "\uD83C\uDF4C", label: "banana peel" },        // 🍌
-    { emoji: "\uD83E\uDE79", label: "used bandage" },       // 🩹
-    { emoji: "\uD83E\uDD61", label: "styrofoam container" },// 🥡
-    { emoji: "\uD83D\uDD0B", label: "battery" },            // 🔋
-    { emoji: "\uD83C\uDF6C", label: "candy wrapper" },      // 🍬
-    { emoji: "\uD83E\uDDE6", label: "dirty sock" }          // 🧦
+    { emoji: "\uD83C\uDF73", label: "pots & pans", note: "Metal: bakeware, pots & pans aren't accepted curbside." },                                  // 🍳
+    { emoji: "\uD83D\uDD0B", label: "household battery", note: "Batteries are hazardous \u2014 use a battery drop-off site, not the cart." },        // 🔋
+    { emoji: "\uD83E\uDE9D", label: "wire hanger", note: "Metal: wire hangers snag the sorting equipment \u2014 not accepted." },                    // 🪝
+    { emoji: "\uD83D\uDCA1", label: "light bulb", note: "Glass: light bulbs aren't beverage/food glass \u2014 use a drop-off location." },            // 💡
+    { emoji: "\uD83E\uDE9E", label: "mirror", note: "Glass: mirrors and window panes are a different glass \u2014 not accepted." },                  // 🪞
+    { emoji: "\u2615", label: "ceramic mug", note: "Ceramics & dishes melt at a different temperature than recyclable glass." },                     // ☕
+    { emoji: "\uD83E\uDD61", label: "styrofoam container", note: "Styrofoam isn't accepted curbside \u2014 find a Styrofoam drop-off site." },       // 🥡
+    { emoji: "\uD83D\uDECD\uFE0F", label: "plastic shopping bag", note: "Plastic bags jam the sorting machinery \u2014 return them to a store instead." }, // 🛍️
+    { emoji: "\uD83E\uDDF8", label: "stuffed toy", note: "Plastic without a stamped 1\u20137 recycling symbol isn't accepted." },                    // 🧸
+    { emoji: "\uD83D\uDCC4", label: "shredded paper", note: "Paper: shredded paper isn't allowed \u2014 it slips through the sorting screens." },    // 📄
+    { emoji: "\uD83D\uDCD5", label: "hardcover book", note: "Hardcover books go to a Paper Gator drop-off, not the recycling cart." },                // 📕
+    { emoji: "\uD83E\uDDFB", label: "paper towel", note: "Paper: paper towels and wax paper aren't recyclable paper." },                             // 🧻
+    { emoji: "\uD83C\uDF4C", label: "banana peel", note: "Food scraps belong in the trash (or compost), never the recycling cart." },                 // 🍌
+    { emoji: "\uD83E\uDE79", label: "used bandage", note: "Personal waste like this always goes in the trash." },                                    // 🩹
+    { emoji: "\uD83C\uDF6C", label: "candy wrapper", note: "Flexible wrapper film isn't recyclable \u2014 it's trash." },                            // 🍬
+    { emoji: "\uD83E\uDDE6", label: "dirty sock", note: "Textiles aren't part of single-stream recycling \u2014 it's trash." }                       // 🧦
   ];
 
   // ---------- tunables ----------
-  var ITEM_SIZE = 46;
+  var ITEM_SIZE = 52;
   var BASE_SPEED = 62;        // px/sec at t=0
   var MAX_SPEED = 300;        // px/sec cap
   var SPEED_RAMP = 3.6;       // px/sec gained per second survived
@@ -1321,6 +1349,13 @@
     void stage.offsetWidth;
     stage.classList.add("shake");
   }
+  var factTimer = null;
+  function showFact(text, isBad, isGood){
+    factEl.textContent = text;
+    factEl.classList.toggle("is-bad", !!isBad);
+    factEl.classList.toggle("is-good", !!isGood);
+  }
+
   function waveBanner(text){
     var b = document.createElement("div");
     b.className = "wave-banner";
@@ -1337,17 +1372,20 @@
     var def = pool[(Math.random() * pool.length) | 0];
 
     var el = document.createElement("div");
-    el.className = "game-item " + (isRecyclable ? "is-recyclable" : "is-trash");
-    el.textContent = def.emoji;
+    el.className = "game-item";
     el.setAttribute("role", "button");
-    el.setAttribute("aria-label", (isRecyclable ? "recyclable: " : "trash: ") + def.label);
+    // aria-label keeps the game playable by screen reader; sighted players get no such
+    // hint — they have to know the item, same as sorting a real bin at the curb.
+    el.setAttribute("aria-label", (isRecyclable ? "recyclable: " : "not accepted: ") + def.label);
 
-    // unmistakable category badge — color + symbol, redundant with the item art itself,
-    // so no one has to correctly identify an emoji under time pressure to know which bin it's for
-    var badge = document.createElement("span");
-    badge.className = "item-badge";
-    badge.textContent = isRecyclable ? "\u267B" : "\u2715";
-    el.appendChild(badge);
+    var glyph = document.createElement("span");
+    glyph.textContent = def.emoji;
+    el.appendChild(glyph);
+
+    var labelEl = document.createElement("span");
+    labelEl.className = "item-label";
+    labelEl.textContent = def.label;
+    el.appendChild(labelEl);
 
     var x = Math.random() * Math.max(0, stageW - ITEM_SIZE);
     var item = {
@@ -1357,6 +1395,8 @@
       y: -ITEM_SIZE - Math.random() * 40,
       speed: currentSpeed(),
       isRecyclable: isRecyclable,
+      label: def.label,
+      note: def.note,
       resolved: false
     };
     el.style.transform = "translate3d(" + x + "px," + item.y + "px,0)";
@@ -1378,6 +1418,8 @@
   }
 
   var lastLossReason = null; // "trash" | "missed" — drives the game-over message
+  var lastLossLabel = null;
+  var lastLossNote = null;
 
   function handleHit(item){
     if (state !== "playing" || item.resolved) return;
@@ -1397,20 +1439,26 @@
       floatText("+" + pts + (mult > 1 ? " \u00d7" + mult : ""), cx, cy, false);
       burst(cx, cy, "var(--f-moss)");
       item.el.classList.add("pop-good");
+      showFact(item.label + " \u2014 " + item.note, false, true);
     } else {
       soundBad();
       shakeStage();
       flashStage("bad");
       floatText("-1 life", cx, cy, true);
       item.el.classList.add("pop-bad");
-      loseLife("trash");
+      showFact(item.label + " \u2014 " + item.note, true, false);
+      loseLife("trash", item);
     }
 
     setTimeout(function(){ removeItem(item); }, 260);
   }
 
-  function loseLife(reason){
+  function loseLife(reason, item){
     lastLossReason = reason;
+    if (item){
+      lastLossLabel = item.label;
+      lastLossNote = item.note;
+    }
     combo = 0;
     renderCombo();
     lives--;
@@ -1467,7 +1515,8 @@
         if (item.isRecyclable){
           soundMiss();
           flashStage("miss");
-          loseLife("missed");
+          showFact("Missed: " + item.label + " \u2014 " + item.note, true, false);
+          loseLife("missed", item);
         }
         removeItem(item);
       }
@@ -1490,6 +1539,9 @@
     score = 0; combo = 0; lives = START_LIVES;
     elapsed = 0; spawnTimer = 0; waveTimer = 0;
     waveSpawned = 0; waveCaught = 0;
+    lastLossReason = null; lastLossLabel = null; lastLossNote = null;
+    factEl.textContent = "Tap items the way you would at the curb \u2014 only real single-stream recyclables belong in the cart.";
+    factEl.classList.remove("is-bad", "is-good");
     renderScore(); renderCombo(); renderHearts();
   }
 
@@ -1515,15 +1567,19 @@
       bestEl.textContent = String(best);
     }
 
-    var reasonText = lastLossReason === "trash"
-      ? "You tapped a piece of trash \u2014 recyclables only."
-      : "A recyclable rolled past before you tapped it.";
+    var reasonText = lastLossLabel
+      ? (lastLossReason === "trash"
+          ? 'You tapped <strong>' + lastLossLabel + '</strong> \u2014 ' + lastLossNote
+          : 'You missed <strong>' + lastLossLabel + '</strong> \u2014 ' + lastLossNote)
+      : (lastLossReason === "trash"
+          ? "You tapped something that isn't accepted curbside."
+          : "A recyclable rolled past before you tapped it.");
 
     overlay.innerHTML =
       '<span class="label">Game over</span>' +
       '<div class="final-score">' + score + '</div>' +
       (isNewBest ? '<div class="new-best">New best!</div>' : '<p>Best: ' + best + '</p>') +
-      '<p>' + reasonText + ' Trash falling past you is fine \u2014 only tap the &#9851;&#65039; ones.</p>' +
+      '<p>' + reasonText + '</p>' +
       '<button class="primary" id="game-restart-btn" type="button">Play again</button>';
     overlay.style.display = "flex";
     document.getElementById("game-restart-btn").addEventListener("click", startGame);
