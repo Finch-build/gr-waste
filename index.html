@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>finch / gr-waste — trash &amp; recycling lookup</title>
+<meta name="description" content="Find your trash, recycling, and yard waste pickup day for any address in Grand Rapids, MI.">
+<meta name="theme-color" content="#F4F4F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0A0B0A" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/finch-mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Public+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ Finch identity tokens ============ */
+  :root{
+    --f-ink:      #101211;
+    --f-ink-80:   #2E312F;
+    --f-ink-55:   #6B6E6C;
+    --f-ink-35:   #A8AAA7;
+    --f-rule:     #E3E3DF;
+    --f-paper:    #F4F4F1;
+    --f-paper-2:  #EAEAE6; /* slightly stepped surface, still paper family */
+    --f-surface:  #FFFFFF; /* input / raised-panel fill */
+    --f-logo-filter: none;
+
+    /* signal ink — dark-on-light values, per brand spec */
+    --f-moss:   #55755C; /* good / on schedule */
+    --f-slate:  #4E6E8A; /* info / link */
+    --f-ochre:  #94762E; /* caution / delayed */
+    --f-clay:   #A0564A; /* bad / error */
+    --f-iris:   #6A6090; /* fifth series, unused here */
+
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --font-sans: 'Public Sans', system-ui, sans-serif;
+
+    --hair: 1px solid var(--f-rule);
+    font-size:16px;
+  }
+
+  /* ============ reversed (dark) variant ==============================
+     Same tokens, dark-surface values — straight from Finch.theme.css:
+     ink becomes the paper, signal hues shift to their dark-surface mix. */
+  @media (prefers-color-scheme: dark){
+    :root{
+      --f-ink:      #F4F4F1;
+      --f-ink-80:   rgba(244,244,241,0.80);
+      --f-ink-55:   rgba(244,244,241,0.55);
+      --f-ink-35:   rgba(244,244,241,0.35);
+      --f-rule:     rgba(244,244,241,0.14);
+      --f-paper:    #0A0B0A;
+      --f-paper-2:  #101211;
+      --f-surface:  #171A18;
+      --f-logo-filter: invert(1);
+
+      --f-moss:   #8FAF95;
+      --f-slate:  #86A6C2;
+      --f-ochre:  #C9A85F;
+      --f-clay:   #C98879;
+      --f-iris:   #A197C4;
+    }
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--f-paper);
+    color:var(--f-ink);
+    font-family:var(--font-sans);
+    font-weight:300;
+    line-height:1.6;
+    -webkit-text-size-adjust:100%;
+    text-wrap:pretty;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .wrap{
+    max-width:640px;
+    margin:0 auto;
+    padding:40px 20px 64px;
+  }
+
+  /* ============ label / mono conventions ============ */
+  .label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--f-ink-55);
+  }
+  .rule-row{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+  }
+  .rule-row .line{
+    flex:1;
+    height:1px;
+    background:var(--f-rule);
+  }
+
+  /* ============ header / identity lockup ============ */
+  header.top{
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+  }
+  .lockup{
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .lockup img{
+    width:34px;
+    height:34px;
+    display:block;
+    object-fit:contain;
+    filter:var(--f-logo-filter);
+  }
+  .lockup .wordmark{
+    font-family:var(--font-mono);
+    font-size:19px;
+    font-weight:500;
+    letter-spacing:-0.01em;
+    color:var(--f-ink);
+  }
+  .lockup .wordmark span{ color:var(--f-ink-55); font-weight:400; }
+  header.top .tagline{
+    margin:0;
+    font-size:1rem;
+    font-weight:300;
+    color:var(--f-ink-80);
+    max-width:46ch;
+  }
+  header.top .top-rule{
+    height:1px;
+    background:var(--f-rule);
+  }
+
+  /* ============ form ============ */
+  form{
+    margin-top:8px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  form label.field-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--f-ink-55);
+  }
+  input[type="text"]{
+    width:100%;
+    font-family:var(--font-sans);
+    font-size:16px; /* prevents iOS auto-zoom */
+    font-weight:400;
+    padding:14px 14px;
+    border:var(--hair);
+    border-radius:0;
+    background:var(--f-surface);
+    color:var(--f-ink);
+    -webkit-appearance:none;
+  }
+  input[type="text"]::placeholder{ color:var(--f-ink-35); }
+  input[type="text"]:focus{
+    outline:none;
+    border-color:var(--f-ink);
+    box-shadow:0 0 0 1px var(--f-ink);
+  }
+  button{
+    font-family:var(--font-mono);
+    font-size:13px;
+    font-weight:500;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    border:1px solid var(--f-ink);
+    border-radius:0;
+    padding:15px 18px;
+    cursor:pointer;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button.primary{
+    background:var(--f-ink);
+    color:var(--f-paper);
+    transition:opacity .1s ease;
+  }
+  button.primary:active{ opacity:0.85; }
+  button.primary:disabled{
+    background:var(--f-ink-35);
+    border-color:var(--f-ink-35);
+    cursor:not-allowed;
+  }
+
+  /* ============ status line ============ */
+  #status{
+    margin-top:18px;
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.03em;
+    color:var(--f-ink-55);
+    min-height:1.4em;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  #status.error{ color:var(--f-clay); }
+  #status.error::before{
+    content:"";
+    width:8px;height:8px;
+    background:var(--f-clay);
+    flex:none;
+  }
+  .spinner{
+    display:inline-block;
+    width:10px;height:10px;
+    border:1.5px solid var(--f-rule);
+    border-top-color:var(--f-ink);
+    border-radius:50%;
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg);} }
+
+  /* ============ results ============ */
+  #results{
+    margin-top:28px;
+    display:flex;
+    flex-direction:column;
+    gap:0;
+  }
+  .matched-address{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--f-ink-55);
+    padding:0 0 18px;
+    border-bottom:var(--hair);
+    margin-bottom:24px;
+  }
+  .matched-address strong{ color:var(--f-ink); font-weight:500; }
+
+  .card{
+    border:var(--hair);
+    border-top:none;
+    padding:22px;
+  }
+  #results > .card:first-of-type,
+  #results > .matched-address + .card{
+    border-top:var(--hair);
+  }
+  .card + .card{ margin-top:-1px; }
+
+  .card-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+  }
+  .card-head .title-group{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .card-num{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--f-ink-35);
+  }
+  .card-title{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    font-weight:500;
+    color:var(--f-ink);
+  }
+  .card-sub{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--f-ink-55);
+    text-align:right;
+  }
+
+  .status-line{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--f-ink);
+    margin-bottom:10px;
+  }
+  .status-dot{
+    width:8px;height:8px;
+    border-radius:50%;
+    flex:none;
+  }
+  .status-dot.moss{ background:var(--f-moss); }
+  .status-dot.ochre{ background:var(--f-ochre); }
+  .status-dot.clay{ background:var(--f-clay); }
+  .status-dot.grey{ background:var(--f-ink-35); }
+
+  .next-date{
+    font-family:var(--font-sans);
+    font-size:1.6rem;
+    font-weight:300;
+    letter-spacing:-0.01em;
+    color:var(--f-ink);
+    margin:0 0 4px;
+  }
+  .delay-note{
+    font-size:0.85rem;
+    color:var(--f-ink-55);
+    margin:0 0 10px;
+  }
+  .upcoming{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--f-ink-55);
+    letter-spacing:0.02em;
+    padding-top:10px;
+    border-top:var(--hair);
+  }
+  .upcoming b{ color:var(--f-ink); font-weight:500; }
+
+  /* ============ notice / notes ============ */
+  .notice{
+    display:flex;
+    gap:12px;
+    border-left:2px solid var(--f-ochre);
+    padding:2px 0 2px 14px;
+    margin-top:0;
+    font-size:0.9rem;
+    color:var(--f-ink-80);
+  }
+
+  .notes{
+    border:var(--hair);
+    padding:22px;
+    margin-top:0;
+  }
+  .notes .label{ margin-bottom:12px; display:block; }
+  .notes ul{ margin:0; padding:0; list-style:none; }
+  .notes li{
+    position:relative;
+    padding-left:18px;
+    margin-bottom:9px;
+    font-size:0.88rem;
+    color:var(--f-ink-80);
+  }
+  .notes li::before{
+    content:"—";
+    position:absolute;
+    left:0;
+    color:var(--f-ink-35);
+  }
+  .notes a{ color:var(--f-slate); text-decoration:none; border-bottom:1px solid rgba(78,110,138,0.4); }
+  .notes a:hover{ border-bottom-color:var(--f-slate); }
+
+  footer.site-footer{
+    margin-top:40px;
+    padding-top:20px;
+    border-top:var(--hair);
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.02em;
+    color:var(--f-ink-55);
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  footer.site-footer a{ color:var(--f-ink-55); }
+
+  @media (max-width:380px){
+    .lockup .wordmark{ font-size:16px; }
+    .next-date{ font-size:1.3rem; }
+    .card{ padding:18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="lockup">
+      <img src="assets/finch-mark.png" alt="Finch mark">
+      <span class="wordmark">finch<span>/gr-waste</span></span>
+    </div>
+    <p class="tagline">Enter a Grand Rapids, MI address. Get your exact trash, recycling, and yard&nbsp;waste pickup days — pulled straight from the city's own route data.</p>
+    <div class="top-rule"></div>
+  </header>
+
+  <form id="lookup-form" autocomplete="off">
+    <label class="field-label" for="address">Street address</label>
+    <input type="text" id="address" name="address" placeholder="Street address, e.g. 123 Main St NE" inputmode="text" enterkeyhint="search" required>
+    <button type="submit" class="primary" id="submit-btn">Find schedule</button>
+  </form>
+
+  <div id="status" role="status" aria-live="polite"></div>
+  <div id="results"></div>
+
+  <footer class="site-footer">
+    <span>Source: City of Grand Rapids public GIS route layers (Refuse_Route_New, GR_Recycle_Routes, YardWaste_Routes) + the official 2026 recycling calendar.</span>
+    <span>Not an official city tool. For account or billing issues, contact 311 / <a href="https://payments.grandrapidsmi.gov/?auth=1" target="_blank" rel="noopener">GRPayIt</a>.</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Config: ArcGIS service endpoints (public, City of Grand Rapids) ----------
+  var GEOCODE_URL = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates";
+  var TRASH_URL   = "https://services2.arcgis.com/L81TiOwAPO1ZvU9b/arcgis/rest/services/Refuse_Route_New/FeatureServer/0/query";
+  var RECYCLE_URL = "https://services2.arcgis.com/L81TiOwAPO1ZvU9b/arcgis/rest/services/GR_Recycle_Routes/FeatureServer/0/query";
+  var YARD_URL    = "https://services2.arcgis.com/L81TiOwAPO1ZvU9b/arcgis/rest/services/YardWaste_Routes/FeatureServer/0/query";
+
+  // ---------- 2026 recycling calendar, keyed by route number (1-10) ----------
+  // Each entry: [month index (0=Jan), day]
+  var RECYCLE_2026 = {
+    "1":  [[0,5],[0,19],[1,2],[1,16],[2,2],[2,16],[2,30],[3,13],[3,27],[4,11],[4,26],[5,8],[5,22],[6,6],[6,20],[7,3],[7,17],[7,31],[8,14],[8,28],[9,12],[9,26],[10,9],[10,23],[11,7],[11,21]],
+    "2":  [[0,12],[0,26],[1,9],[1,23],[2,9],[2,23],[3,6],[3,20],[4,4],[4,18],[5,1],[5,15],[5,29],[6,13],[6,27],[7,10],[7,24],[8,8],[8,21],[9,5],[9,19],[10,2],[10,16],[10,30],[11,14],[11,28]],
+    "3":  [[0,6],[0,20],[1,3],[1,17],[2,3],[2,17],[2,31],[3,14],[3,28],[4,12],[4,27],[5,9],[5,23],[6,7],[6,21],[7,4],[7,18],[8,1],[8,15],[8,29],[9,13],[9,27],[10,10],[10,24],[11,8],[11,22]],
+    "4":  [[0,13],[0,27],[1,10],[1,24],[2,10],[2,24],[3,7],[3,21],[4,5],[4,19],[5,2],[5,16],[5,30],[6,14],[6,28],[7,11],[7,25],[8,9],[8,22],[9,6],[9,20],[10,3],[10,17],[11,1],[11,15],[11,29]],
+    "5":  [[0,7],[0,21],[1,4],[1,18],[2,4],[2,18],[3,1],[3,15],[3,29],[4,13],[4,28],[5,10],[5,24],[6,8],[6,22],[7,5],[7,19],[8,2],[8,16],[8,30],[9,14],[9,28],[10,11],[10,25],[11,9],[11,23]],
+    "6":  [[0,14],[0,28],[1,11],[1,25],[2,11],[2,25],[3,8],[3,22],[4,6],[4,20],[5,3],[5,17],[6,1],[6,15],[6,29],[7,12],[7,26],[8,10],[8,23],[9,7],[9,21],[10,4],[10,18],[11,2],[11,16],[11,30]],
+    "7":  [[0,8],[0,22],[1,5],[1,19],[2,5],[2,19],[3,2],[3,16],[3,30],[4,14],[4,29],[5,11],[5,25],[6,9],[6,23],[7,6],[7,20],[8,3],[8,17],[9,1],[9,15],[9,29],[10,12],[10,27],[11,10],[11,24]],
+    "8":  [[0,2],[0,15],[0,29],[1,12],[1,26],[2,12],[2,26],[3,9],[3,23],[4,7],[4,21],[5,4],[5,18],[6,2],[6,16],[6,30],[7,13],[7,27],[8,11],[8,24],[9,8],[9,22],[10,5],[10,19],[11,3],[11,17],[11,31]],
+    "9":  [[0,9],[0,23],[1,6],[1,20],[2,6],[2,20],[3,3],[3,17],[4,1],[4,15],[4,30],[5,12],[5,26],[6,10],[6,24],[7,7],[7,21],[8,4],[8,18],[9,2],[9,16],[9,30],[10,13],[10,28],[11,11],[11,26]],
+    "10": [[0,3],[0,16],[0,30],[1,13],[1,27],[2,13],[2,27],[3,10],[3,24],[4,8],[4,22],[5,5],[5,19],[6,3],[6,17],[6,31],[7,14],[7,28],[8,12],[8,25],[9,9],[9,23],[10,6],[10,20],[11,4],[11,18]]
+  };
+
+  // Known 2026 city-holiday closures. Everything scheduled that same week
+  // shifts one collection day later, starting the day after the holiday.
+  var HOLIDAY_DELAYS_2026 = [
+    { date: "2026-01-01", name: "New Year's Day" },
+    { date: "2026-05-25", name: "Memorial Day" },
+    { date: "2026-07-03", name: "Independence Day (observed)" },
+    { date: "2026-09-07", name: "Labor Day" },
+    { date: "2026-11-26", name: "Thanksgiving" },
+    { date: "2026-12-25", name: "Christmas" }
+  ];
+
+  var DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  function fmtDate(d){
+    return DAY_NAMES[d.getDay()] + ", " + MONTH_NAMES[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
+  }
+  function fmtShort(d){
+    return MONTH_NAMES[d.getMonth()].slice(0,3) + " " + d.getDate();
+  }
+  function sameWeek(a, b){
+    var wa = new Date(a); wa.setDate(a.getDate() - a.getDay());
+    var wb = new Date(b); wb.setDate(b.getDate() - b.getDay());
+    return wa.getTime() === wb.getTime();
+  }
+  // Returns the matching holiday record if `d` falls in a holiday-delay week, else null.
+  function holidayForWeek(d){
+    for (var i=0;i<HOLIDAY_DELAYS_2026.length;i++){
+      var h = new Date(HOLIDAY_DELAYS_2026[i].date + "T00:00:00");
+      if (sameWeek(d, h)) return HOLIDAY_DELAYS_2026[i];
+    }
+    return null;
+  }
+
+  var DAY_INDEX = { "SUNDAY":0,"MONDAY":1,"TUESDAY":2,"WEDNESDAY":3,"THURSDAY":4,"FRIDAY":5,"SATURDAY":6 };
+
+  // Each occurrence: { scheduled: Date, actual: Date, holiday: {date,name}|null }
+  function nextWeeklyOccurrences(dayName, count, fromDate){
+    var target = DAY_INDEX[dayName.toUpperCase()];
+    var out = [];
+    var d = new Date(fromDate);
+    d.setHours(0,0,0,0);
+    while (out.length < count){
+      if (d.getDay() === target){
+        var scheduled = new Date(d);
+        var holiday = holidayForWeek(d);
+        var actual = new Date(d);
+        if (holiday) actual.setDate(actual.getDate() + 1);
+        out.push({ scheduled: scheduled, actual: actual, holiday: holiday });
+        d.setDate(d.getDate() + 7);
+      } else {
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return out;
+  }
+
+  function nextRecycleOccurrences(routeNum, count, fromDate){
+    var list = RECYCLE_2026[String(routeNum)];
+    if (!list) return [];
+    var today = new Date(fromDate); today.setHours(0,0,0,0);
+    var all = list.map(function(md){
+      var scheduled = new Date(2026, md[0], md[1]);
+      var holiday = holidayForWeek(scheduled);
+      var actual = new Date(scheduled);
+      if (holiday) actual.setDate(actual.getDate() + 1);
+      return { scheduled: scheduled, actual: actual, holiday: holiday };
+    }).sort(function(a,b){ return a.scheduled - b.scheduled; });
+    return all.filter(function(o){ return o.actual >= today; }).slice(0, count);
+  }
+
+  function extractRouteDigits(routeStr){
+    var m = String(routeStr).match(/^(\d+)/);
+    return m ? m[1] : String(routeStr);
+  }
+
+  // ---------- Networking ----------
+  function fetchJSON(url, params){
+    var qs = Object.keys(params).map(function(k){
+      return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
+    }).join("&");
+    return fetch(url + "?" + qs, { headers: { "Accept": "application/json" } })
+      .then(function(r){
+        if (!r.ok) throw new Error("Network error (" + r.status + ")");
+        return r.json();
+      })
+      .then(function(json){
+        if (json.error) throw new Error(json.error.message || "Service error");
+        return json;
+      });
+  }
+
+  function geocode(address){
+    return fetchJSON(GEOCODE_URL, {
+      f: "json",
+      SingleLine: address + (/grand rapids/i.test(address) ? "" : ", Grand Rapids, MI"),
+      outFields: "*",
+      maxLocations: 1
+    }).then(function(json){
+      if (!json.candidates || !json.candidates.length){
+        throw new Error("Couldn't find that address. Try including street type and quadrant (e.g. 'SE', 'NW').");
+      }
+      var c = json.candidates[0];
+      if (c.score < 80){
+        throw new Error("Address match confidence is low (" + c.score + "%). Please double-check the address.");
+      }
+      return c;
+    });
+  }
+
+  function queryRouteLayer(url, x, y){
+    return fetchJSON(url, {
+      f: "json",
+      geometry: x + "," + y,
+      geometryType: "esriGeometryPoint",
+      inSR: 4326,
+      spatialRel: "esriSpatialRelIntersects",
+      outFields: "*",
+      returnGeometry: "false"
+    }).then(function(json){
+      return (json.features && json.features[0]) ? json.features[0].attributes : null;
+    });
+  }
+
+  // ---------- Rendering ----------
+  var statusEl = document.getElementById("status");
+  var resultsEl = document.getElementById("results");
+  var form = document.getElementById("lookup-form");
+  var input = document.getElementById("address");
+  var submitBtn = document.getElementById("submit-btn");
+
+  function setStatus(html, isError){
+    statusEl.innerHTML = html || "";
+    statusEl.className = isError ? "error" : "";
+  }
+
+  function clearResults(){ resultsEl.innerHTML = ""; }
+
+  function cap(s){ return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase(); }
+
+  function isYardWasteSeason(d){
+    var m = d.getMonth();
+    return m >= 3 && m <= 10; // Apr(3) - Nov(10)
+  }
+
+  // primary occurrence card body: status line + big date + optional holiday note + upcoming strip
+  function occurrenceBlock(occ, upcomingList){
+    var isDelayed = !!occ.holiday;
+    var dotClass = isDelayed ? "ochre" : "moss";
+    var statusText = isDelayed ? "Delayed 1 day" : "On schedule";
+    var html = '<div class="status-line"><span class="status-dot ' + dotClass + '"></span>' + statusText + '</div>';
+    html += '<div class="next-date">' + fmtDate(occ.actual) + '</div>';
+    if (isDelayed){
+      html += '<p class="delay-note">' + occ.holiday.name + ' falls on ' + fmtDate(occ.scheduled).split(",").slice(0,2).join(",") +
+              ' that week, so collection moves to the next day.</p>';
+    }
+    if (upcomingList && upcomingList.length){
+      html += '<div class="upcoming">Also coming up — ' + upcomingList.map(function(o){
+        var tag = o.holiday ? "*" : "";
+        return "<b>" + fmtShort(o.actual) + tag + "</b>";
+      }).join(" &middot; ") + (upcomingList.some(function(o){return o.holiday;}) ? ' &nbsp;(* holiday delay)' : '') + '</div>';
+    }
+    return html;
+  }
+
+  function cardShell(num, title, sub, bodyHTML){
+    var card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML =
+      '<div class="card-head">' +
+        '<div class="title-group"><span class="card-num">' + num + '</span><span class="card-title">' + title + '</span></div>' +
+        '<div class="card-sub">' + sub + '</div>' +
+      '</div>' + bodyHTML;
+    return card;
+  }
+
+  function infoCard(num, title, msg){
+    var card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML =
+      '<div class="card-head"><div class="title-group"><span class="card-num">' + num + '</span><span class="card-title">' + title + '</span></div></div>' +
+      '<div class="notice">' + msg + '</div>';
+    return card;
+  }
+
+  function render(matchedAddress, trash, recycle, yard, today){
+    clearResults();
+
+    var addrDiv = document.createElement("div");
+    addrDiv.className = "matched-address";
+    addrDiv.innerHTML = "&gt; matched " + "<strong>" + matchedAddress + "</strong>";
+    resultsEl.appendChild(addrDiv);
+
+    // --- Trash ---
+    if (trash){
+      var day = trash.ROUTE_DAY;
+      var occs = nextWeeklyOccurrences(day, 4, today);
+      var body = occurrenceBlock(occs[0], occs.slice(1));
+      resultsEl.appendChild(cardShell("01", "Trash", "route " + (trash.ROUTETITLE || trash.ROUTE_NUM) + " &middot; every " + cap(day), body));
+    } else {
+      resultsEl.appendChild(infoCard("01", "Trash", "No refuse route found here. This address may be outside city collection service, or served by a private hauler."));
+    }
+
+    // --- Recycling ---
+    if (recycle){
+      var routeNum = extractRouteDigits(recycle.ROUTE);
+      var recOcc = nextRecycleOccurrences(routeNum, 3, today);
+      if (recOcc.length){
+        var body2 = occurrenceBlock(recOcc[0], recOcc.slice(1));
+        resultsEl.appendChild(cardShell("02", "Recycling", "route " + recycle.ROUTE + " &middot; every other " + cap(recycle.ROUTE_DAY), body2));
+      } else {
+        resultsEl.appendChild(cardShell("02", "Recycling", "route " + recycle.ROUTE,
+          '<div class="upcoming" style="border-top:none;padding-top:0;">No more 2026 dates published yet for this route — check back for next year\'s calendar.</div>'));
+      }
+    } else {
+      resultsEl.appendChild(infoCard("02", "Recycling", "No recycling route found here."));
+    }
+
+    // --- Yard waste ---
+    if (yard){
+      var ywDay = yard.RouteDay;
+      if (isYardWasteSeason(today)){
+        var ywOcc = nextWeeklyOccurrences(ywDay, 3, today);
+        var body3 = occurrenceBlock(ywOcc[0], ywOcc.slice(1));
+        resultsEl.appendChild(cardShell("03", "Yard waste", "route " + yard.RouteName + " &middot; every " + cap(ywDay), body3));
+      } else {
+        var card3 = cardShell("03", "Yard waste", "route " + yard.RouteName + " &middot; every " + cap(ywDay),
+          '<div class="status-line"><span class="status-dot grey"></span>Off season</div>' +
+          '<div class="notice" style="border-left-color:var(--f-ink-35);">Collection typically runs April&ndash;November. Check the city site for this year\'s exact start/end dates.</div>');
+        resultsEl.appendChild(card3);
+      }
+    } else {
+      resultsEl.appendChild(infoCard("03", "Yard waste", "No yard waste route found here."));
+    }
+
+    var notes = document.createElement("div");
+    notes.className = "notes";
+    notes.innerHTML =
+      '<span class="label">Good to know</span>' +
+      '<ul>' +
+        '<li>Put bins at the curb by 7:00am on pickup day (or the night before).</li>' +
+        '<li>Holiday weeks shift that week\'s collection one day later — already applied above where known.</li>' +
+        '<li>Move bins back off the curb the same day they\'re collected.</li>' +
+        '<li>Trash won\'t be collected if your city account balance is negative — check <a href="https://payments.grandrapidsmi.gov/?auth=1" target="_blank" rel="noopener">GRPayIt</a>.</li>' +
+      '</ul>';
+    resultsEl.appendChild(notes);
+  }
+
+  // ---------- Main flow ----------
+  function runLookup(address){
+    setStatus('<span class="spinner"></span>resolving address&hellip;');
+    clearResults();
+    submitBtn.disabled = true;
+
+    geocode(address).then(function(candidate){
+      var x = candidate.location.x, y = candidate.location.y;
+      setStatus('<span class="spinner"></span>querying route layers&hellip;');
+      return Promise.all([
+        queryRouteLayer(TRASH_URL, x, y),
+        queryRouteLayer(RECYCLE_URL, x, y),
+        queryRouteLayer(YARD_URL, x, y)
+      ]).then(function(results){
+        setStatus("");
+        render(candidate.attributes.Match_addr || address, results[0], results[1], results[2], new Date());
+      });
+    }).catch(function(err){
+      console.error(err);
+      setStatus(err.message || "Something went wrong. Please try again.", true);
+    }).finally(function(){
+      submitBtn.disabled = false;
+    });
+  }
+
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    var addr = input.value.trim();
+    if (!addr) return;
+    input.blur();
+    runLookup(addr);
+  });
+
+})();
+</script>
+</body>
+</html>
