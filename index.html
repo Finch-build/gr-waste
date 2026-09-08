@@ -10,7 +10,7 @@
 <link rel="icon" href="assets/finch-mark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Public+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Public+Sans:wght@300;400;500;700&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
   /* ============ Finch identity tokens ============ */
   :root{
@@ -379,6 +379,376 @@
     .next-date{ font-size:1.3rem; }
     .card{ padding:18px; }
   }
+
+  /* ============ mini game: "sort the bin" ============ */
+  .game-wrap{ margin-top:8px; }
+  .game-intro{ margin-bottom:20px; }
+  .game-title{
+    font-family:var(--font-sans);
+    font-weight:400;
+    font-size:1.3rem;
+    letter-spacing:-0.01em;
+    color:var(--f-ink);
+    margin:8px 0 6px;
+  }
+  .game-tagline{
+    margin:0;
+    font-size:0.9rem;
+    color:var(--f-ink-80);
+    max-width:52ch;
+  }
+
+  .game-hud{
+    display:flex;
+    align-items:center;
+    gap:22px;
+    flex-wrap:wrap;
+    padding:12px 16px;
+    border:var(--hair);
+    border-bottom:none;
+    background:var(--f-surface);
+  }
+  .hud-group{
+    display:flex;
+    align-items:baseline;
+    gap:7px;
+  }
+  .hud-value{
+    font-family:var(--font-mono);
+    font-size:15px;
+    font-weight:500;
+    color:var(--f-ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .hud-group.combo .hud-value{ color:var(--f-slate); }
+  .hearts{ gap:3px !important; margin-left:auto; }
+  .heart{
+    width:14px;height:14px;
+    display:inline-block;
+    color:var(--f-clay);
+    font-size:14px;
+    line-height:1;
+  }
+  .heart.lost{ color:var(--f-rule); }
+  .mute-btn{
+    font-family:var(--font-mono);
+    font-size:14px;
+    border:none;
+    background:none;
+    cursor:pointer;
+    padding:2px 0 2px 4px;
+    color:var(--f-ink-55);
+    line-height:1;
+  }
+  .pixel-toggle{
+    font-family:var(--font-mono);
+    font-size:10px;
+    font-weight:500;
+    letter-spacing:0.06em;
+    border:1px solid var(--f-ink-35);
+    background:none;
+    color:var(--f-ink-55);
+    cursor:pointer;
+    padding:5px 8px;
+    line-height:1;
+    border-radius:0;
+  }
+  .pixel-toggle[aria-pressed="true"]{
+    background:var(--f-ink);
+    color:var(--f-paper);
+    border-color:var(--f-ink);
+  }
+
+  .game-stage{
+    position:relative;
+    overflow:hidden;
+    height:440px;
+    border:var(--hair);
+    background:
+      linear-gradient(var(--f-rule) 1px, transparent 1px) 0 0/100% 44px,
+      var(--f-paper-2);
+    touch-action:none;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  @media (max-width:380px){ .game-stage{ height:380px; } }
+
+  .game-stage.shake{ animation:game-shake .32s ease; }
+  @keyframes game-shake{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-8px); }
+    40%{ transform:translateX(7px); }
+    60%{ transform:translateX(-5px); }
+    80%{ transform:translateX(3px); }
+  }
+  /* subtle inset edge-glow, not a full opaque cover — items must stay visible while it plays */
+  .game-stage.flash-bad::after,
+  .game-stage.flash-good::after,
+  .game-stage.flash-miss::after{
+    content:"";
+    position:absolute; inset:0;
+    pointer-events:none;
+    z-index:1;
+    animation:game-flash .4s ease-out;
+  }
+  .game-stage.flash-bad::after{ box-shadow:inset 0 0 0 4px var(--f-clay), inset 0 0 46px rgba(160,86,74,0.35); }
+  .game-stage.flash-miss::after{ box-shadow:inset 0 0 0 3px var(--f-ochre), inset 0 0 32px rgba(148,118,46,0.22); }
+  .game-stage.flash-good::after{ box-shadow:inset 0 0 0 3px var(--f-moss), inset 0 0 32px rgba(85,117,92,0.22); }
+  @keyframes game-flash{ from{ opacity:1; } to{ opacity:0; } }
+
+  .game-item{
+    position:absolute;
+    top:0; left:0;
+    width:46px; height:46px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:28px;
+    border-radius:50%;
+    background:var(--f-surface);
+    border:1.5px solid var(--f-rule);
+    cursor:pointer;
+    will-change:transform;
+    box-shadow:0 1px 0 rgba(0,0,0,0.03);
+  }
+  .game-item.is-recyclable{ border-color:rgba(85,117,92,0.45); }
+  .game-item.is-trash{ border-color:rgba(160,86,74,0.4); }
+  .item-badge{
+    position:absolute;
+    right:-5px; bottom:-5px;
+    width:18px; height:18px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    line-height:1;
+    font-family:var(--font-sans);
+    color:#fff;
+    border:1.5px solid var(--f-surface);
+    box-shadow:0 1px 2px rgba(0,0,0,0.18);
+  }
+  .game-item.is-recyclable .item-badge{ background:var(--f-moss); }
+  .game-item.is-trash .item-badge{ background:var(--f-clay); }
+  .game-item.pop-good{ animation:pop-good .26s ease-out forwards; }
+  .game-item.pop-bad{ animation:pop-bad .26s ease-out forwards; }
+  @keyframes pop-good{
+    to{ transform:scale(1.6); opacity:0; }
+  }
+  @keyframes pop-bad{
+    0%{ transform:scale(1); }
+    30%{ transform:scale(0.82) rotate(-8deg); }
+    to{ transform:scale(0.3) rotate(12deg); opacity:0; }
+  }
+
+  .float-text{
+    position:absolute;
+    pointer-events:none;
+    font-family:var(--font-mono);
+    font-weight:500;
+    font-size:14px;
+    color:var(--f-moss);
+    animation:float-up .7s ease-out forwards;
+    white-space:nowrap;
+  }
+  .float-text.bad{ color:var(--f-clay); }
+  @keyframes float-up{
+    0%{ transform:translateY(0); opacity:1; }
+    100%{ transform:translateY(-42px); opacity:0; }
+  }
+
+  .particle{
+    position:absolute;
+    width:6px;height:6px;
+    border-radius:50%;
+    background:var(--f-moss);
+    pointer-events:none;
+    animation:particle-burst .5s ease-out forwards;
+  }
+  @keyframes particle-burst{
+    to{ transform:translate(var(--tx),var(--ty)) scale(0); opacity:0; }
+  }
+
+  .wave-banner{
+    position:absolute;
+    top:14px; left:50%;
+    transform:translate(-50%,-14px);
+    padding:8px 16px;
+    background:var(--f-ink);
+    color:var(--f-paper);
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    opacity:0;
+    pointer-events:none;
+    animation:wave-banner 1.9s ease-out forwards;
+  }
+  @keyframes wave-banner{
+    0%{ opacity:0; transform:translate(-50%,-14px); }
+    12%{ opacity:1; transform:translate(-50%,0); }
+    80%{ opacity:1; transform:translate(-50%,0); }
+    100%{ opacity:0; transform:translate(-50%,-10px); }
+  }
+
+  .game-overlay{
+    position:absolute; inset:0;
+    z-index:5;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    gap:10px;
+    padding:32px 24px;
+    background:rgba(244,244,241,0.94);
+  }
+  @media (prefers-color-scheme: dark){
+    .game-overlay{ background:rgba(10,11,10,0.92); }
+  }
+  .game-overlay h3{
+    margin:2px 0 0;
+    font-family:var(--font-sans);
+    font-weight:400;
+    font-size:1.25rem;
+    color:var(--f-ink);
+  }
+  .game-overlay p{
+    margin:0;
+    font-size:0.88rem;
+    color:var(--f-ink-80);
+    max-width:38ch;
+  }
+  .game-overlay .combo-hint{ color:var(--f-ink-55); font-size:0.8rem; }
+  .game-overlay .final-score{
+    font-family:var(--font-mono);
+    font-size:2.4rem;
+    font-weight:500;
+    color:var(--f-ink);
+    margin:4px 0;
+  }
+  .game-overlay .new-best{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--f-moss);
+  }
+  .game-overlay button{ margin-top:8px; }
+  .game-legend{
+    display:flex;
+    gap:18px;
+    justify-content:center;
+    font-size:0.78rem;
+    color:var(--f-ink-55);
+  }
+  .game-legend span{ display:flex; align-items:center; gap:5px; }
+
+  /* ============ 8-bit theme (scoped entirely to .game-wrap.eightbit) ============ */
+  .game-wrap.eightbit{
+    --eb-bg:     #10182b;
+    --eb-grid:   #223060;
+    --eb-ink:    #e9f6ff;
+    --eb-ink-2:  #93a3c9;
+    --eb-good:   #39ff9e;
+    --eb-bad:    #ff3b64;
+    --eb-accent: #ffd23f;
+    --eb-panel:  #0b1120;
+    --font-pixel: 'Press Start 2P', var(--font-mono);
+  }
+  .game-wrap.eightbit .game-title{ font-family:var(--font-pixel); font-size:1rem; letter-spacing:0.02em; }
+  .game-wrap.eightbit .game-tagline{ font-family:var(--font-mono); }
+  .game-wrap.eightbit .game-hud{ background:var(--eb-panel); border-color:var(--eb-grid); }
+  .game-wrap.eightbit .game-hud .label{ font-family:var(--font-pixel); font-size:8px; color:var(--eb-ink-2); letter-spacing:0.04em; }
+  .game-wrap.eightbit .hud-value{ font-family:var(--font-pixel); font-size:11px; color:var(--eb-ink); }
+  .game-wrap.eightbit .hud-group.combo .hud-value{ color:var(--eb-accent); }
+  .game-wrap.eightbit .heart{ color:var(--eb-bad); font-size:16px; }
+  .game-wrap.eightbit .heart.lost{ color:var(--eb-grid); }
+  .game-wrap.eightbit .mute-btn,
+  .game-wrap.eightbit .pixel-toggle{ font-family:var(--font-pixel); font-size:9px; border-radius:0; }
+  .game-wrap.eightbit .pixel-toggle[aria-pressed="true"]{ background:var(--eb-accent); color:#241a00; border-color:#000; }
+
+  .game-wrap.eightbit .game-stage{
+    border-color:var(--eb-grid);
+    background:
+      repeating-linear-gradient(0deg, var(--eb-grid) 0 1px, transparent 1px 24px),
+      repeating-linear-gradient(90deg, var(--eb-grid) 0 1px, transparent 1px 24px),
+      var(--eb-bg);
+  }
+  .game-wrap.eightbit .game-stage::before{
+    content:"";
+    position:absolute; inset:0;
+    pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,0.4) 0 2px, transparent 2px 4px);
+    mix-blend-mode:multiply;
+    opacity:0.55;
+  }
+
+  .game-wrap.eightbit .game-item{
+    border-radius:0;
+    border-width:3px;
+    background:var(--eb-panel);
+    box-shadow:3px 3px 0 rgba(0,0,0,0.6);
+    filter:contrast(1.15) saturate(1.4);
+  }
+  .game-wrap.eightbit .game-item.is-recyclable{ border-color:var(--eb-good); }
+  .game-wrap.eightbit .game-item.is-trash{ border-color:var(--eb-bad); }
+  .game-wrap.eightbit .item-badge{
+    border-radius:0;
+    border-width:2px;
+    border-color:#000;
+    font-family:var(--font-pixel);
+    font-size:8px;
+  }
+  .game-wrap.eightbit .game-item.is-recyclable .item-badge{ background:var(--eb-good); color:#04240f; }
+  .game-wrap.eightbit .game-item.is-trash .item-badge{ background:var(--eb-bad); color:#2a0010; }
+
+  .game-wrap.eightbit .float-text{
+    font-family:var(--font-pixel);
+    font-size:10px;
+    color:var(--eb-good);
+    text-shadow:2px 2px 0 rgba(0,0,0,0.6);
+  }
+  .game-wrap.eightbit .float-text.bad{ color:var(--eb-bad); }
+  .game-wrap.eightbit .particle{ border-radius:0; background:var(--eb-good); }
+  .game-wrap.eightbit .wave-banner{
+    font-family:var(--font-pixel);
+    font-size:9px;
+    border-radius:0;
+    border:2px solid #000;
+    background:var(--eb-accent);
+    color:#241a00;
+  }
+
+  .game-wrap.eightbit .game-overlay{ background:rgba(11,17,32,0.95); }
+  .game-wrap.eightbit .game-overlay .label{ font-family:var(--font-pixel); font-size:9px; color:var(--eb-accent); }
+  .game-wrap.eightbit .game-overlay h3{ font-family:var(--font-pixel); font-size:13px; line-height:1.6; color:var(--eb-ink); }
+  .game-wrap.eightbit .game-overlay p{ font-family:var(--font-mono); color:var(--eb-ink-2); }
+  .game-wrap.eightbit .game-overlay .combo-hint{ color:var(--eb-ink-2); }
+  .game-wrap.eightbit .game-overlay .final-score{
+    font-family:var(--font-pixel);
+    font-size:1.8rem;
+    color:var(--eb-good);
+    text-shadow:3px 3px 0 rgba(0,0,0,0.55);
+  }
+  .game-wrap.eightbit .game-overlay .new-best{ font-family:var(--font-pixel); font-size:9px; color:var(--eb-accent); }
+  .game-wrap.eightbit .game-legend{ color:var(--eb-ink-2); font-family:var(--font-mono); }
+
+  .game-wrap.eightbit button.primary{
+    font-family:var(--font-pixel);
+    font-size:9px;
+    border-radius:0;
+    border:3px solid #000;
+    background:var(--eb-good);
+    color:#04240f;
+    box-shadow:4px 4px 0 #000;
+    transition:transform .05s ease, box-shadow .05s ease;
+  }
+  .game-wrap.eightbit button.primary:active{
+    transform:translate(3px,3px);
+    box-shadow:1px 1px 0 #000;
+    opacity:1;
+  }
 </style>
 </head>
 <body>
@@ -406,6 +776,50 @@
     <span>Source: City of Grand Rapids public GIS route layers (Refuse_Route_New, GR_Recycle_Routes, YardWaste_Routes) + the official 2026 recycling calendar.</span>
     <span>Not an official city tool. For account or billing issues, contact 311 / <a href="https://payments.grandrapidsmi.gov/?auth=1" target="_blank" rel="noopener">GRPayIt</a>.</span>
   </footer>
+
+  <section class="game-wrap" id="game-wrap">
+    <div class="rule-row" style="margin:48px 0 20px;">
+      <span class="label">Bonus</span>
+      <div class="line"></div>
+    </div>
+
+    <div class="game-intro">
+      <h2 class="game-title">Sort the bin</h2>
+      <p class="game-tagline">Tap the recyclables before they hit the curb. Leave the trash falling. It speeds up the longer you survive.</p>
+    </div>
+
+    <div class="game-hud">
+      <div class="hud-group">
+        <span class="label">Score</span>
+        <span class="hud-value" id="game-score">0</span>
+      </div>
+      <div class="hud-group combo">
+        <span class="label">Combo</span>
+        <span class="hud-value" id="game-combo">x1</span>
+      </div>
+      <div class="hud-group">
+        <span class="label">Best</span>
+        <span class="hud-value" id="game-best">0</span>
+      </div>
+      <div class="hearts" id="game-hearts" aria-label="lives remaining"></div>
+      <button class="pixel-toggle" id="game-pixel-toggle" type="button" aria-pressed="false" title="Toggle 8-bit mode">&#127918; 8-BIT</button>
+      <button class="mute-btn" id="game-mute" type="button" aria-label="Toggle sound" title="Toggle sound">&#128266;</button>
+    </div>
+
+    <div class="game-stage" id="game-stage">
+      <div class="game-overlay" id="game-overlay">
+        <span class="label">Reflex sort</span>
+        <h3>Can you keep up with the truck?</h3>
+        <p>Tap anything with a green &#9851; badge. Leave anything with a red &#10007; badge alone &mdash; letting trash fall past is correct, not a mistake. Missed recyclables cost a life too, so don't wait too long.</p>
+        <p class="combo-hint">Clear an entire wave with zero misses for a bonus life.</p>
+        <div class="game-legend">
+          <span>&#9851; green badge = tap it</span>
+          <span>&#10007; red badge = let it fall</span>
+        </div>
+        <button class="primary" id="game-start-btn" type="button">Start game</button>
+      </div>
+    </div>
+  </section>
 
 </div>
 
@@ -713,6 +1127,418 @@
     if (!addr) return;
     input.blur();
     runLookup(addr);
+  });
+
+})();
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var stage   = document.getElementById("game-stage");
+  var overlay = document.getElementById("game-overlay");
+  if (!stage || !overlay) return;
+
+  var scoreEl  = document.getElementById("game-score");
+  var comboEl  = document.getElementById("game-combo");
+  var bestEl   = document.getElementById("game-best");
+  var heartsEl = document.getElementById("game-hearts");
+  var muteBtn  = document.getElementById("game-mute");
+  var pixelBtn = document.getElementById("game-pixel-toggle");
+  var gameWrap = document.getElementById("game-wrap");
+  var startBtn = document.getElementById("game-start-btn");
+
+  // ---------- item catalogue ----------
+  // Picked (and re-picked) so each icon reads unambiguously as its category at a glance
+  // and at small size — nothing paper/cardboard-shaped ends up on the trash side.
+  var RECYCLABLES = [
+    { emoji: "\uD83E\uDD6B", label: "tin can" },           // 🥫
+    { emoji: "\uD83D\uDCE6", label: "cardboard box" },     // 📦
+    { emoji: "\uD83C\uDF7E", label: "glass bottle" },      // 🍾
+    { emoji: "\uD83D\uDCF0", label: "newspaper" },         // 📰
+    { emoji: "\uD83E\uDDF4", label: "plastic bottle" },    // 🧴
+    { emoji: "\uD83E\uDDC3", label: "juice carton" }       // 🧃
+  ];
+  var TRASH = [
+    { emoji: "\uD83C\uDF55", label: "greasy pizza slice" }, // 🍕
+    { emoji: "\uD83C\uDF4C", label: "banana peel" },        // 🍌
+    { emoji: "\uD83E\uDE79", label: "used bandage" },       // 🩹
+    { emoji: "\uD83E\uDD61", label: "styrofoam container" },// 🥡
+    { emoji: "\uD83D\uDD0B", label: "battery" },            // 🔋
+    { emoji: "\uD83C\uDF6C", label: "candy wrapper" },      // 🍬
+    { emoji: "\uD83E\uDDE6", label: "dirty sock" }          // 🧦
+  ];
+
+  // ---------- tunables ----------
+  var ITEM_SIZE = 46;
+  var BASE_SPEED = 62;        // px/sec at t=0
+  var MAX_SPEED = 300;        // px/sec cap
+  var SPEED_RAMP = 3.6;       // px/sec gained per second survived
+  var BASE_SPAWN_MS = 950;
+  var MIN_SPAWN_MS = 360;
+  var SPAWN_RAMP = 8.5;       // ms shaved off per second survived
+  var WAVE_MS = 13000;
+  var MAX_LIVES = 5;
+  var START_LIVES = 3;
+
+  // ---------- state ----------
+  var state = "idle"; // idle | playing | over
+  var items = [];
+  var itemSeq = 0;
+  var score = 0, combo = 0, lives = START_LIVES;
+  var best = Number(localStorage.getItem("gr-game-best") || 0);
+  var muted = localStorage.getItem("gr-game-muted") === "1";
+  var pixelMode = localStorage.getItem("gr-game-pixel") === "1";
+  var elapsed = 0;
+  var spawnTimer = 0, waveTimer = 0;
+  var waveSpawned = 0, waveCaught = 0;
+  var lastTime = null;
+  var rafId = null;
+
+  bestEl.textContent = String(best);
+  updateMuteBtn();
+  updatePixelBtn();
+
+  // ---------- sound (tiny WebAudio blips, lazily created) ----------
+  var audioCtx = null;
+  function ctx(){
+    if (!audioCtx){
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    return audioCtx;
+  }
+  function beep(freq, dur, type, gainPeak){
+    if (muted) return;
+    var c = ctx();
+    if (!c) return;
+    var osc = c.createOscillator();
+    var gain = c.createGain();
+    // 8-bit mode: every voice becomes a hard square wave, classic chiptune timbre
+    osc.type = pixelMode ? "square" : (type || "sine");
+    osc.frequency.value = freq;
+    gain.gain.value = 0;
+    osc.connect(gain).connect(c.destination);
+    var now = c.currentTime;
+    gain.gain.linearRampToValueAtTime(gainPeak || 0.12, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+    osc.start(now);
+    osc.stop(now + dur + 0.02);
+  }
+  function soundCatch(mult){ beep(520 + mult * 60, 0.14, "triangle", 0.11); }
+  function soundBad(){ beep(140, 0.22, "sawtooth", 0.13); }
+  function soundMiss(){ beep(200, 0.16, "square", 0.08); }
+  function soundLifeUp(){
+    beep(660, 0.12, "triangle", 0.12);
+    setTimeout(function(){ beep(880, 0.16, "triangle", 0.12); }, 110);
+  }
+  function soundGameOver(){
+    beep(300, 0.18, "sawtooth", 0.1);
+    setTimeout(function(){ beep(180, 0.28, "sawtooth", 0.1); }, 150);
+  }
+
+  function updateMuteBtn(){
+    muteBtn.innerHTML = muted ? "&#128263;" : "&#128266;";
+    muteBtn.setAttribute("aria-pressed", String(muted));
+  }
+  muteBtn.addEventListener("click", function(){
+    muted = !muted;
+    localStorage.setItem("gr-game-muted", muted ? "1" : "0");
+    updateMuteBtn();
+  });
+
+  function updatePixelBtn(){
+    gameWrap.classList.toggle("eightbit", pixelMode);
+    pixelBtn.setAttribute("aria-pressed", String(pixelMode));
+  }
+  pixelBtn.addEventListener("click", function(){
+    pixelMode = !pixelMode;
+    localStorage.setItem("gr-game-pixel", pixelMode ? "1" : "0");
+    updatePixelBtn();
+    beep(pixelMode ? 660 : 440, 0.08, pixelMode ? "square" : "sine", 0.08);
+  });
+
+  // ---------- difficulty curve ----------
+  function currentSpeed(){
+    return Math.min(MAX_SPEED, BASE_SPEED + elapsed * SPEED_RAMP);
+  }
+  function currentSpawnMs(){
+    return Math.max(MIN_SPAWN_MS, BASE_SPAWN_MS - elapsed * SPAWN_RAMP);
+  }
+  function recyclableChance(){
+    return Math.max(0.45, 0.62 - elapsed * 0.0016);
+  }
+
+  // ---------- HUD ----------
+  function renderHearts(){
+    var html = "";
+    for (var i = 0; i < lives; i++) html += '<span class="heart">&hearts;</span>';
+    for (var j = lives; j < MAX_LIVES; j++) html += '<span class="heart lost">&hearts;</span>';
+    heartsEl.innerHTML = html;
+  }
+  function renderScore(){ scoreEl.textContent = String(score); }
+  function renderCombo(){ comboEl.textContent = "x" + multiplier(); }
+  function multiplier(){ return Math.min(5, 1 + Math.floor(combo / 5)); }
+
+  // ---------- fx helpers ----------
+  function floatText(text, x, y, bad){
+    var el = document.createElement("div");
+    el.className = "float-text" + (bad ? " bad" : "");
+    el.textContent = text;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    stage.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 720);
+  }
+  function burst(x, y, color){
+    for (var i = 0; i < 7; i++){
+      var p = document.createElement("div");
+      p.className = "particle";
+      var angle = (Math.PI * 2 * i) / 7 + Math.random() * 0.5;
+      var dist = 26 + Math.random() * 18;
+      p.style.setProperty("--tx", Math.cos(angle) * dist + "px");
+      p.style.setProperty("--ty", Math.sin(angle) * dist + "px");
+      p.style.left = x + "px";
+      p.style.top = y + "px";
+      if (color) p.style.background = color;
+      stage.appendChild(p);
+      setTimeout(function(el){ return function(){ el.remove(); }; }(p), 520);
+    }
+  }
+  var lastFlashAt = 0;
+  function flashStage(kind){
+    // throttle: rapid repeat misses shouldn't stack into a solid, stuck-looking overlay
+    var now = performance.now();
+    if (now - lastFlashAt < 180) return;
+    lastFlashAt = now;
+    stage.classList.remove("flash-bad", "flash-miss", "flash-good");
+    void stage.offsetWidth;
+    stage.classList.add("flash-" + kind);
+  }
+  function shakeStage(){
+    stage.classList.remove("shake");
+    void stage.offsetWidth;
+    stage.classList.add("shake");
+  }
+  function waveBanner(text){
+    var b = document.createElement("div");
+    b.className = "wave-banner";
+    b.textContent = text;
+    stage.appendChild(b);
+    setTimeout(function(){ b.remove(); }, 1950);
+  }
+
+  // ---------- item lifecycle ----------
+  function spawnItem(){
+    var stageW = stage.clientWidth;
+    var isRecyclable = Math.random() < recyclableChance();
+    var pool = isRecyclable ? RECYCLABLES : TRASH;
+    var def = pool[(Math.random() * pool.length) | 0];
+
+    var el = document.createElement("div");
+    el.className = "game-item " + (isRecyclable ? "is-recyclable" : "is-trash");
+    el.textContent = def.emoji;
+    el.setAttribute("role", "button");
+    el.setAttribute("aria-label", (isRecyclable ? "recyclable: " : "trash: ") + def.label);
+
+    // unmistakable category badge — color + symbol, redundant with the item art itself,
+    // so no one has to correctly identify an emoji under time pressure to know which bin it's for
+    var badge = document.createElement("span");
+    badge.className = "item-badge";
+    badge.textContent = isRecyclable ? "\u267B" : "\u2715";
+    el.appendChild(badge);
+
+    var x = Math.random() * Math.max(0, stageW - ITEM_SIZE);
+    var item = {
+      id: ++itemSeq,
+      el: el,
+      x: x,
+      y: -ITEM_SIZE - Math.random() * 40,
+      speed: currentSpeed(),
+      isRecyclable: isRecyclable,
+      resolved: false
+    };
+    el.style.transform = "translate3d(" + x + "px," + item.y + "px,0)";
+    el.addEventListener("pointerdown", function(ev){
+      ev.preventDefault();
+      handleHit(item);
+    }, { passive: false });
+
+    stage.appendChild(el);
+    items.push(item);
+
+    if (isRecyclable) waveSpawned++;
+  }
+
+  function removeItem(item){
+    item.el.remove();
+    var idx = items.indexOf(item);
+    if (idx !== -1) items.splice(idx, 1);
+  }
+
+  var lastLossReason = null; // "trash" | "missed" — drives the game-over message
+
+  function handleHit(item){
+    if (state !== "playing" || item.resolved) return;
+    item.resolved = true;
+    var cx = item.x + ITEM_SIZE / 2;
+    var cy = item.y + ITEM_SIZE / 2;
+
+    if (item.isRecyclable){
+      combo++;
+      waveCaught++;
+      var mult = multiplier();
+      var pts = 10 * mult;
+      score += pts;
+      renderScore();
+      renderCombo();
+      soundCatch(mult);
+      floatText("+" + pts + (mult > 1 ? " \u00d7" + mult : ""), cx, cy, false);
+      burst(cx, cy, "var(--f-moss)");
+      item.el.classList.add("pop-good");
+    } else {
+      soundBad();
+      shakeStage();
+      flashStage("bad");
+      floatText("-1 life", cx, cy, true);
+      item.el.classList.add("pop-bad");
+      loseLife("trash");
+    }
+
+    setTimeout(function(){ removeItem(item); }, 260);
+  }
+
+  function loseLife(reason){
+    lastLossReason = reason;
+    combo = 0;
+    renderCombo();
+    lives--;
+    renderHearts();
+    if (lives <= 0) endGame();
+  }
+
+  // ---------- wave bonus-life logic ----------
+  function evaluateWave(){
+    if (waveSpawned > 0 && waveCaught >= waveSpawned){
+      if (lives < MAX_LIVES){
+        lives++;
+        renderHearts();
+        soundLifeUp();
+        waveBanner("Perfect wave \u2014 +1 life");
+      } else {
+        soundLifeUp();
+        waveBanner("Perfect wave!");
+      }
+    }
+    waveSpawned = 0;
+    waveCaught = 0;
+  }
+
+  // ---------- main loop ----------
+  function tick(now){
+    if (state !== "playing"){ rafId = null; return; }
+    if (lastTime === null) lastTime = now;
+    var dt = Math.min(0.05, (now - lastTime) / 1000); // clamp for tab-switch jumps
+    lastTime = now;
+    elapsed += dt;
+
+    spawnTimer += dt * 1000;
+    var spawnMs = currentSpawnMs();
+    if (spawnTimer >= spawnMs){
+      spawnTimer = 0;
+      spawnItem();
+    }
+
+    waveTimer += dt * 1000;
+    if (waveTimer >= WAVE_MS){
+      waveTimer = 0;
+      evaluateWave();
+    }
+
+    var stageH = stage.clientHeight;
+    for (var i = items.length - 1; i >= 0; i--){
+      var item = items[i];
+      if (item.resolved) continue;
+      item.y += item.speed * dt;
+      item.el.style.transform = "translate3d(" + item.x + "px," + item.y + "px,0)";
+      if (item.y > stageH){
+        item.resolved = true;
+        if (item.isRecyclable){
+          soundMiss();
+          flashStage("miss");
+          loseLife("missed");
+        }
+        removeItem(item);
+      }
+    }
+
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function startLoop(){
+    if (rafId === null){
+      lastTime = null;
+      rafId = requestAnimationFrame(tick);
+    }
+  }
+
+  // ---------- game state transitions ----------
+  function resetState(){
+    items.forEach(function(item){ item.el.remove(); });
+    items = [];
+    score = 0; combo = 0; lives = START_LIVES;
+    elapsed = 0; spawnTimer = 0; waveTimer = 0;
+    waveSpawned = 0; waveCaught = 0;
+    renderScore(); renderCombo(); renderHearts();
+  }
+
+  function startGame(){
+    ctx(); // unlock audio on user gesture
+    resetState();
+    state = "playing";
+    overlay.style.display = "none";
+    startLoop();
+  }
+
+  function endGame(){
+    state = "over";
+    soundGameOver();
+    items.forEach(function(item){ item.el.remove(); });
+    items = [];
+    stage.classList.remove("flash-bad", "flash-miss", "flash-good", "shake");
+
+    var isNewBest = score > best;
+    if (isNewBest){
+      best = score;
+      localStorage.setItem("gr-game-best", String(best));
+      bestEl.textContent = String(best);
+    }
+
+    var reasonText = lastLossReason === "trash"
+      ? "You tapped a piece of trash \u2014 recyclables only."
+      : "A recyclable rolled past before you tapped it.";
+
+    overlay.innerHTML =
+      '<span class="label">Game over</span>' +
+      '<div class="final-score">' + score + '</div>' +
+      (isNewBest ? '<div class="new-best">New best!</div>' : '<p>Best: ' + best + '</p>') +
+      '<p>' + reasonText + ' Trash falling past you is fine \u2014 only tap the &#9851;&#65039; ones.</p>' +
+      '<button class="primary" id="game-restart-btn" type="button">Play again</button>';
+    overlay.style.display = "flex";
+    document.getElementById("game-restart-btn").addEventListener("click", startGame);
+  }
+
+  startBtn.addEventListener("click", startGame);
+
+  document.addEventListener("visibilitychange", function(){
+    if (document.hidden && state === "playing"){
+      // pause: cancel loop, resume cleanly on return without penalizing the player
+      if (rafId !== null){ cancelAnimationFrame(rafId); rafId = null; }
+      lastTime = null;
+    } else if (!document.hidden && state === "playing"){
+      startLoop();
+    }
   });
 
 })();
